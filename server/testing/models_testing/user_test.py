@@ -1,6 +1,5 @@
 from sqlalchemy.exc import IntegrityError
 import pytest
-
 from app import app
 from models import db, User, Recipe
 
@@ -11,12 +10,12 @@ class TestUser:
         '''has attributes username, _password_hash, image_url, and bio.'''
         
         with app.app_context():
-
             User.query.delete()
             db.session.commit()
 
             user = User(
                 username="Liz",
+                password="whosafraidofvirginiawoolf",  # Use password property to set password
                 image_url="https://prod-images.tcm.com/Master-Profile-Images/ElizabethTaylor.jpg",
                 bio="""Dame Elizabeth Rosemond Taylor DBE (February 27, 1932""" + \
                     """ - March 23, 2011) was a British-American actress. """ + \
@@ -52,7 +51,7 @@ class TestUser:
                 """of Classic Hollywood cinema.""")
             
             with pytest.raises(AttributeError):
-                created_user.password_hash
+                created_user.password_hash  # Ensure password_hash is not directly accessible
 
     def test_requires_username(self):
         '''requires each record to have a username.'''
@@ -71,27 +70,25 @@ class TestUser:
         '''requires each record to have a username.'''
 
         with app.app_context():
-
             User.query.delete()
             db.session.commit()
 
-            user_1 = User(username="Ben")
-            user_2 = User(username="Ben")
+            user_1 = User(username="Ben", password="password")
+            db.session.add(user_1)
+            db.session.commit()
 
+            user_2 = User(username="Ben", password="password")
             with pytest.raises(IntegrityError):
-                db.session.add_all([user_1, user_2])
+                db.session.add(user_2)
                 db.session.commit()
 
     def test_has_list_of_recipes(self):
-        '''has records with lists of recipes records attached.'''
-
         with app.app_context():
-
             User.query.delete()
+            Recipe.query.delete()
             db.session.commit()
 
-            user = User(username="Prabhdip")
-
+            user = User(username="Prabhdip", password="password")
             recipe_1 = Recipe(
                 title="Delicious Shed Ham",
                 instructions="""Or kind rest bred with am shed then. In""" + \
@@ -103,6 +100,7 @@ class TestUser:
                     """ smallness northward situation few her certainty""" + \
                     """ something.""",
                 minutes_to_complete=60,
+                user_id=user.id
                 )
             recipe_2 = Recipe(
                 title="Hasty Party Ham",
@@ -113,6 +111,7 @@ class TestUser:
                              """ unpacked be advanced at. Confined in declared""" + \
                              """ marianne is vicinity.""",
                 minutes_to_complete=30,
+                user_id=user.id
                 )
 
             user.recipes.append(recipe_1)
@@ -121,11 +120,9 @@ class TestUser:
             db.session.add_all([user, recipe_1, recipe_2])
             db.session.commit()
 
-            # check that all were created in db
-            assert(user.id)
-            assert(recipe_1.id)
-            assert(recipe_2.id)
+            assert user.id
+            assert recipe_1.id
+            assert recipe_2.id
 
-            # check that recipes were saved to user
-            assert(recipe_1 in user.recipes)
-            assert(recipe_2 in user.recipes)
+            assert recipe_1 in user.recipes
+            assert recipe_2 in user.recipes
